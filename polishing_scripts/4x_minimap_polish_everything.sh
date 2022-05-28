@@ -39,32 +39,33 @@ else
 	exit
 fi
 
-long_read=$(echo $1 | tr -d '\r')
-short_read_1=$(echo $2 | tr -d '\r')
-short_read_2=$(echo $3 | tr -d '\r')
+threads=$1
+long_read=$(echo $2 | tr -d '\r')
+short_read_1=$(echo $3 | tr -d '\r')
+short_read_2=$(echo $4 | tr -d '\r')
 
 for F in *.fasta; do
 	N=$(basename $F .fasta);
 
-	minimap2 -t 8 -ax map-ont $F "$long_read" > $N.sam;
+	minimap2 -t "$threads" -ax map-ont $F "$long_read" > $N.sam;
 	racon -m 8 -x -6 -g -8 -w 500 -t 10 "$long_read" $N.sam $F > racon_1_$N.fna;
 	rm $N.sam;
 
-        minimap2 -t 8 -ax map-ont racon_1_$N.fna "$long_read" > $N.sam;
+        minimap2 -t "$threads" -ax map-ont racon_1_$N.fna "$long_read" > $N.sam;
         racon -m 8 -x -6 -g -8 -w 500 -t 10 "$long_read" $N.sam racon_1_$N.fna > racon_2_$N.fna;
         rm $N.sam;
 
-        minimap2 -t 8 -ax map-ont racon_2_$N.fna "$long_read" > $N.sam;
+        minimap2 -t "$threads" -ax map-ont racon_2_$N.fna "$long_read" > $N.sam;
         racon -m 8 -x -6 -g -8 -w 500 -t 10 "$long_read" $N.sam racon_2_$N.fna > racon_3_$N.fna;
         rm $N.sam;
 
-        minimap2 -t 8 -ax map-ont racon_3_$N.fna "$long_read" > $N.sam;
+        minimap2 -t "$threads" -ax map-ont racon_3_$N.fna "$long_read" > $N.sam;
         racon -m 8 -x -6 -g -8 -w 500 -t 10 "$long_read" $N.sam racon_3_$N.fna > racon_4_$N.fna;
 
-        medaka_consensus -i "$long_read" -d racon_4_$N.fna -o medaka_$N -t 16 -m r941_min_sup_g507;
+        medaka_consensus -i "$long_read" -d racon_4_$N.fna -o medaka_$N -t "$threads" -m r941_min_sup_g507;
         rm $N.sam racon_*;
 
-	if [[ $# == 3 ]]; then
+	if [[ $# == 4 ]]; then
 		echo "#####################################################################";
 		echo "                                                                     ";
 		echo "Short reads detected as arguments 2 and 3. Proceeding with polypolish";
@@ -72,8 +73,8 @@ for F in *.fasta; do
 		echo "#####################################################################";
 		mkdir polypolish_$N;
 		bwa index medaka_$N/consensus.fasta;
-		bwa mem -t 16 -a medaka_$N/consensus.fasta "$short_read_1" > polypolish_$N/alignment1.sam;
-		bwa mem -t 16 -a medaka_$N/consensus.fasta "$short_read_2" > polypolish_$N/alignment2.sam;
+		bwa mem -t "$threads" -a medaka_$N/consensus.fasta "$short_read_1" > polypolish_$N/alignment1.sam;
+		bwa mem -t "$threads" -a medaka_$N/consensus.fasta "$short_read_2" > polypolish_$N/alignment2.sam;
 		polypolish medaka_$N/consensus.fasta polypolish_$N/alignment1.sam polypolish_$N/alignment2.sam > polypolish_$N/polypolish_$F;
 		rm polypolish_$N/alignment1.sam polypolish_$N/alignment2.sam;
 		rm -rf medaka_$N;
